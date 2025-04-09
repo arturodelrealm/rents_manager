@@ -1,0 +1,16 @@
+{% extends "admin_extra_buttons/change_list.html" %}
+
+{% block content %}
+    <!-- Agregar la información del IPC encima de la tabla -->
+    {% if indicators_info %}
+        <div class="module">
+            <div style='padding:10px; font-size:16px; font-weight:bold; text-align:right'>
+                <p>{{ indicators_info|safe }}</p>
+            </div>
+
+        </div>
+    {% endif %}
+
+    <!-- Renderiza la tabla de objetos normalmente -->
+    {{ block.super }}
+{% endblock %}
