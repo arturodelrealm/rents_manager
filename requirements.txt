@@ -1,6 +1,7 @@
 dateutils
 django-admin-extra-buttons
 Django>=5.0
+django-phonenumber-field[phonenumbers]
 psycopg2-binary
 gunicorn
 pydantic

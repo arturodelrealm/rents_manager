@@ -9,8 +9,7 @@ from django.utils.translation import gettext_lazy as _
 from result import Ok, Err, Result
 
 from .apartment import Apartment
-from .client import Client
-from .tenant import Tenant
+from .person import Person
 from .historical_price import HistoricalPrice
 from .economic_indicator import EconomicIndicator
 from ..constants import PriceUpdateFrequency
@@ -18,15 +17,10 @@ from ..constants import PriceUpdateFrequency
 
 class Contract(models.Model):
 
-    clients = models.ManyToManyField(
-        Client,
-        related_name='contracts',
-        verbose_name=_('Cliente')
-    )
     tenants = models.ManyToManyField(
-        Tenant,
+        Person,
         related_name='contracts',
-        verbose_name=_('Inquilinos')
+        verbose_name=_('Arrendatarios')
     )
     apartment = models.ForeignKey(
         Apartment,

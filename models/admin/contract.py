@@ -55,7 +55,7 @@ class ContractForm(forms.ModelForm):
 class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     list_display = (
         "id",
-        "client",
+        "owner",
         "apartment",
         "current_price",
         'next_price_update_formatted',
@@ -106,9 +106,9 @@ class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
             use_l10n=True
         )
 
-    def client(self, obj):
-        return obj.apartment.clients.first()
+    def owner(self, obj):
+        return obj.apartment.owner
 
     current_price.short_description = _("Precio actual")
-    client.short_description = _('Cliente')
+    owner.short_description = _('Propietario')
     next_price_update_formatted.short_description = _('Próximo ajuste')
