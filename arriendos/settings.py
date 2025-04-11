@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'phonenumber_field',
     'models',
     'admin_extra_buttons',
 ]
@@ -135,3 +136,5 @@ if DEBUG:
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CMF_APIKEY = os.getenv('CMF_APIKEY', '')
+
+PHONENUMBER_DEFAULT_REGION = 'CL'
