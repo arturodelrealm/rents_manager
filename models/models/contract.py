@@ -90,7 +90,7 @@ class Contract(models.Model):
 
     @classmethod
     def update_prices_by_ipc(cls, month: date = None) -> Result:
-        month = (month or date.today()).replace(day=1)
+        month = month or date.today()
         updated_contracts = set()
         if not EconomicIndicator.check_month_ipc_exists(month, True):
             return Err(
@@ -125,13 +125,22 @@ class Contract(models.Model):
             EconomicIndicator.decimal_to_percentage((ipc_variance - 1) * 100)
         )
         with transaction.atomic():
-            HistoricalPrice.objects.create(
-                contract=self,
-                date=month,
-                price=new_price,
-                reason=reason,
-            )
+            data = {
+                'contract_id': self.id,
+                'date': month,
+                'price': new_price,
+                'reason': reason,
+            }
+            HistoricalPrice.create(data)
             self.next_price_update = month + relativedelta(
                 months=self.number_of_months_for_ipc_update
             )
             self.save()
+
+    def infer_last_price_update(self) -> date:
+        return max(
+            self.start_date,
+            self.next_price_update - relativedelta(
+                months=self.number_of_months_for_ipc_update
+            )
+        )
