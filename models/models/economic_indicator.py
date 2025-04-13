@@ -89,17 +89,25 @@ class EconomicIndicator(models.Model):
 
     @classmethod
     def check_month_ipc_exists(
-            cls, month: date, check_previous_month: bool = False) -> bool:
+            cls,
+            month: date,
+            check_from_previous_month: bool = False,
+            check_last_n_months=None
+    ) -> bool:
         """Return True if the wanted month have a IPC value.
         Add check_previous_month param because sometimes we want the previous
         month ipc value."""
         month = month.replace(day=1)
-        if check_previous_month:
+        check_last_n_months = check_last_n_months or 1
+        if check_from_previous_month:
             month = month - relativedelta(months=1)
+        # Check if we have all the needed IPC values.
         return cls.objects.filter(
             indicator_type=EconomicIndicatorType.IPC,
-            date=month
-        ).exists()
+            date__lte=month,
+            date__gt=month - relativedelta(months=check_last_n_months),
+            date__day=1
+        ).count() == check_last_n_months
 
     @classmethod
     def get_accumulative_n_months_ipc(

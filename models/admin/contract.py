@@ -1,55 +1,10 @@
-from typing import Any
-
 from admin_extra_buttons.api import ExtraButtonsMixin, button
-from django import forms
 from django.contrib import admin, messages
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
 
+from models.forms import ContractForm
 from models.models import Contract, HistoricalPrice
-
-
-class ContractForm(forms.ModelForm):
-    price = forms.IntegerField(
-        label=_("Precio"),
-        required=True,
-    )
-    price_date = forms.DateField(
-        label=_('Fecha del precio'),
-        help_text=_('Fecha desde cuando el precio actual está activo.'),
-        widget=forms.DateInput(attrs={'type': 'month'}),
-        required=True
-    )
-    reason = forms.CharField(
-        label=_('Motivo cambio de precio'),
-        help_text=_('Motivo del cambio de precio (IPC, acuerdo mutuo, etc).'),
-        required=False
-    )
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        if self.instance.pk:
-            last_price = self.instance.last_price
-            if last_price:
-                self.fields['price'].initial = int(last_price.price)
-                self.fields['price_date'].initial = last_price.date
-
-    def clean(self) -> dict[str, Any] | None:
-        reason = (self.cleaned_data.get('reason') or '').strip()
-        if 'price' in self.changed_data:
-            if not reason:
-                error_message = _(
-                    'Si se modifica el precio se debe ingresar un motivo.'
-                )
-                self.add_error('reason', error_message)
-        # Check that the price date is after the init date
-
-        return self.cleaned_data
-
-    class Meta:
-        model = Contract
-        fields = '__all__'
 
 
 class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
@@ -63,21 +18,26 @@ class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
     form = ContractForm
 
     def save_model(self, request, obj, form, change):
+        creation = not bool(form.instance.pk)
         super().save_model(request, obj, form, change)
 
         new_price = form.cleaned_data.get('price')
         old_price = obj.price
 
         if new_price and new_price != old_price:
-            defaults = {
+            if creation:
+                reason = _('Precio inicial')
+                price_date = obj.infer_last_price_update()
+            else:
+                reason = form.cleaned_data.get('reason')
+                price_date = form.cleaned_data.get('price_date')
+            data = {
                 'price': new_price,
-                'reason': form.cleaned_data.get('reason'),
+                'reason': reason,
+                'date': price_date,
+                'contract_id': obj.pk,
             }
-            HistoricalPrice.objects.update_or_create(
-                defaults=defaults,
-                date=form.cleaned_data.get('price_date'),
-                contract_id=obj.pk
-            )
+            HistoricalPrice.create(data)
 
     @button(label=_('Calcular precios del mes'))
     def update_ipc(self, request):
