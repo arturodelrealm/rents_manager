@@ -92,10 +92,11 @@ class Contract(models.Model):
     def update_prices_by_ipc(cls, month: date = None) -> Result:
         month = month or date.today()
         updated_contracts = set()
-        if not EconomicIndicator.check_month_ipc_exists(month, True):
+        if not EconomicIndicator.check_month_ipc_exists(month, True, 12):
             return Err(
                 _('No existe el valor del IPC para actualizar los precios del '
-                  'mes de {}.').format(
+                  'mes de {}. Puede ir a indicadores Económicos a obtener los '
+                  'datos').format(
                     date_format(month, 'YEAR_MONTH_FORMAT', use_l10n=True)
                 )
             )
