@@ -74,6 +74,10 @@ class Contract(models.Model):
         return f'{int(price):,}$'.replace(',', '.') if \
             self.price else _('No tiene precio')
 
+    @staticmethod
+    def format_int_price(price: int) -> str:
+        return f'{price:,}$'.replace(',', '.')
+
     @property
     def number_of_months_for_ipc_update(self) -> int:
         return int(self.price_update_frequency.replace('M', ''))

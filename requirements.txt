@@ -1,9 +1,13 @@
+boto3
 dateutils
 django-admin-extra-buttons
 Django>=5.0
+django-storages
 django-phonenumber-field[phonenumbers]
+django-import-export[xlsx]
 psycopg2-binary
 gunicorn
 pydantic
 requests
 result
+tablib
