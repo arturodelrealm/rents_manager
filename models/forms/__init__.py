@@ -1,1 +1,3 @@
-from .contract import ContractForm
+from .apartment import ApartmentForm, ImportApartmentForm
+from .contract import ContractForm, ImportContractForm
+from .person import PersonForm

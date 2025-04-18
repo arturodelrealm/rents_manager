@@ -1,13 +1,17 @@
+import tablib
 from admin_extra_buttons.api import ExtraButtonsMixin, button
 from django.contrib import admin, messages
+from django.http import HttpResponse
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
+from import_export.admin import ImportMixin
 
 from models.forms import ContractForm
-from models.models import Contract, HistoricalPrice
+from models.import_export_resources.contract import UnifiedContractResource
+from models.models import Contract
 
 
-class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
+class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     list_display = (
         "id",
         "owner",
@@ -16,28 +20,27 @@ class ContractAdmin(ExtraButtonsMixin, admin.ModelAdmin):
         'next_price_update_formatted',
     )
     form = ContractForm
+    resource_classes = [UnifiedContractResource]
+    skip_admin_log = True
 
     def save_model(self, request, obj, form, change):
-        creation = not bool(form.instance.pk)
-        super().save_model(request, obj, form, change)
+        obj.save()
+        form.save_historical_price(obj)
+        return obj
 
-        new_price = form.cleaned_data.get('price')
-        old_price = obj.price
+    @button(label=_('Descargar excel de ejemplo'))
+    def download_example_excel(self, __):
 
-        if new_price and new_price != old_price:
-            if creation:
-                reason = _('Precio inicial')
-                price_date = obj.infer_last_price_update()
-            else:
-                reason = form.cleaned_data.get('reason')
-                price_date = form.cleaned_data.get('price_date')
-            data = {
-                'price': new_price,
-                'reason': reason,
-                'date': price_date,
-                'contract_id': obj.pk,
-            }
-            HistoricalPrice.create(data)
+        data = tablib.Dataset(headers=UnifiedContractResource.FILE_HEADERS)
+
+        response = HttpResponse(
+            data.export("xlsx"),
+            content_type="application/vnd.ms-excel"
+        )
+        response[
+            "Content-Disposition"
+        ] = 'attachment; filename="plantilla_importacion.xlsx"'
+        return response
 
     @button(label=_('Calcular precios del mes'))
     def update_ipc(self, request):

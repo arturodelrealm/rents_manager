@@ -7,7 +7,7 @@ from validations.rut import RutValidator
 
 class Person(models.Model):
     name = models.CharField(_('Nombre'), max_length=100)
-    last_name = models.CharField(_('Apellido'), max_length=100)
+    last_name = models.CharField(_('Apellido'), max_length=100, blank=True)
     email = models.EmailField(_('Email'), unique=True)
     phone = PhoneNumberField(_('Teléfono'), blank=True)
     rut = models.CharField(

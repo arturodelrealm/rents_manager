@@ -19,5 +19,18 @@ class Apartment(models.Model):
         verbose_name = _('Departamento')
         verbose_name_plural = _('Departamentos')
 
+    @staticmethod
+    def clean_address(address: str) -> str:
+        """Method intended for the address search."""
+        return address.lower().strip()
+
+    @property
+    def cleaned_address(self) -> str:
+        return self.clean_address(self.address)
+
+    @property
+    def active_contracts(self):
+        return self.contracts.filter(end_date__isnull=True)
+
     def __str__(self):
         return f'{self.address}'

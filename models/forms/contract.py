@@ -4,7 +4,7 @@ from django import forms
 from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 
-from models.models import Contract
+from models.models import Contract, HistoricalPrice
 
 
 class ContractForm(forms.ModelForm):
@@ -28,11 +28,13 @@ class ContractForm(forms.ModelForm):
         super().__init__(*args, **kwargs)
 
         if self.instance.pk:
+            self.is_creation = False
             last_price = self.instance.last_price
             if last_price:
                 self.fields['price'].initial = int(last_price.price)
                 self.fields['price_date'].initial = last_price.date
         else:
+            self.is_creation = True
             self.fields['price_date'].widget = forms.HiddenInput()
             self.fields['reason'].widget = forms.HiddenInput()
 
@@ -52,6 +54,9 @@ class ContractForm(forms.ModelForm):
 
     def validate_property_has_no_other_contracts(self):
         if self.errors:
+            return
+        apartment = self.cleaned_data.get('apartment')
+        if not apartment:
             return
         start_date = self.cleaned_data['start_date']
         property_id = self.cleaned_data['apartment'].id
@@ -103,8 +108,44 @@ class ContractForm(forms.ModelForm):
         return self.cleaned_data
 
     def save(self, commit: bool = True):
-        return super().save(commit)
+        obj = super().save(commit)
+
+        if commit:
+            self.save_historical_price(obj)
+        return obj
+
+    def save_historical_price(self, obj):
+        new_price = self.cleaned_data.get('price')
+        old_price = obj.price
+
+        if new_price and new_price != old_price:
+            if self.is_creation:
+                reason = _('Precio inicial')
+                price_date = obj.infer_last_price_update()
+            else:
+                reason = self.cleaned_data.get('reason')
+                price_date = self.cleaned_data.get('price_date')
+            data = {
+                'price': new_price,
+                'reason': reason,
+                'date': price_date,
+                'contract_id': obj.pk,
+            }
+            HistoricalPrice.create(data)
 
     class Meta:
         model = Contract
         fields = '__all__'
+
+
+class ImportContractForm(ContractForm):
+
+    NOT_REQUIRED_FIELDS = (
+        'tenants',
+        'apartment'
+    )
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        for field_name in self.NOT_REQUIRED_FIELDS:
+            self.fields[field_name].required = False
