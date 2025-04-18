@@ -44,7 +44,7 @@ INSTALLED_APPS = [
     'import_export',
     'admin_extra_buttons',
     'models',
-    'storages'
+    'storages',
 ]
 
 MIDDLEWARE = [
@@ -109,6 +109,27 @@ AUTH_PASSWORD_VALIDATORS = [
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
     },
 ]
+
+IMPORT_EXPORT_TMP_STORAGE_CLASS = "import_export.tmp_storages.MediaStorage"
+
+STORAGES = {
+    "default": {
+        "BACKEND": "django.core.files.storage.FileSystemStorage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.ManifestStaticFilesStorage",
+    },
+    "import_export": {
+        "BACKEND": "storages.backends.s3.S3Storage",
+        "OPTIONS": {
+            "bucket_name": os.getenv("AWS_STORAGE_BUCKET_NAME"),
+            "region_name": os.getenv("AWS_S3_REGION_NAME"),
+            "access_key": os.getenv("AWS_ACCESS_KEY_ID"),
+            "secret_key": os.getenv("AWS_SECRET_ACCESS_KEY"),
+            "endpoint_url": os.getenv("AWS_S3_ENDPOINT_URL"),
+        },
+    },
+}
 
 
 # Internationalization
