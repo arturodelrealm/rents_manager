@@ -19,9 +19,9 @@ class CommentInline(admin.StackedInline):
 
 class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     list_display = (
-        "id",
-        "owner",
         "apartment",
+        "owner",
+        'tenant',
         "current_price",
         'next_price_update_formatted',
     )
@@ -76,9 +76,13 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
             use_l10n=True
         )
 
+    def tenant(self, obj):
+        return obj.tenants.first()
+
     def owner(self, obj):
         return obj.apartment.owner
 
     current_price.short_description = _("Precio actual")
     owner.short_description = _('Propietario')
+    tenant.short_description = _('Arrendatario')
     next_price_update_formatted.short_description = _('Próximo ajuste')
