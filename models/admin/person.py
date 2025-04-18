@@ -1,9 +1,13 @@
 from django.contrib import admin
 from django.utils.translation import gettext_lazy as _
 
+from models.forms import PersonForm
+
 
 class PersonAdmin(admin.ModelAdmin):
     list_display = ('full_name', 'email', 'rut', 'phone')
+
+    form = PersonForm
 
     def full_name(self, obj):
         return obj.full_name
