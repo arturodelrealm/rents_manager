@@ -8,7 +8,13 @@ from import_export.admin import ImportMixin
 
 from models.forms import ContractForm
 from models.import_export_resources.contract import UnifiedContractResource
-from models.models import Contract
+from models.models import Contract, Comment
+
+
+class CommentInline(admin.StackedInline):
+    model = Comment
+    extra = 1
+    readonly_fields = ('created_at',)
 
 
 class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
@@ -22,6 +28,7 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     form = ContractForm
     resource_classes = [UnifiedContractResource]
     skip_admin_log = True
+    inlines = [CommentInline]
 
     def save_model(self, request, obj, form, change):
         obj.save()
