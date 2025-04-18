@@ -71,7 +71,7 @@ class Contract(models.Model):
     @property
     def formatted_price(self) -> str:
         price = self.price
-        return f'{int(price):,}$'.replace(',', '.') if \
+        return self.format_int_price(int(price)) if \
             self.price else _('No tiene precio')
 
     @staticmethod
