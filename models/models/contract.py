@@ -60,13 +60,15 @@ class Contract(models.Model):
         )
 
     @property
-    def last_price(self) -> HistoricalPrice:
-        return self.historical_prices.order_by('-date').first()
+    def current_price(self) -> HistoricalPrice:
+        return self.historical_prices.filter(
+            date__lte=date.today()
+        ).order_by('-date').first()
 
     @property
     def price(self) -> Decimal:
-        last_price = self.last_price
-        return last_price.price if last_price else None
+        current_price = self.current_price
+        return current_price.price if current_price else None
 
     @property
     def formatted_price(self) -> str:
@@ -85,12 +87,7 @@ class Contract(models.Model):
     def must_update_price_by_ipc(self, update_month: date = None) -> bool:
         update_date = update_month or date.today().replace(day=1)
         # TODO: validation of the IPC existance for the 8th day
-        if self.next_price_update is not None:
-            return update_date >= self.next_price_update
-        last_price_update = self.last_price.date
-        month_difference = (update_date.year - last_price_update.year) * 12 \
-            + (update_date.month - last_price_update.month)
-        return month_difference >= self.number_of_months_for_ipc_update
+        return update_date >= self.next_price_update
 
     @classmethod
     def update_prices_by_ipc(cls, month: date = None) -> Result:
@@ -115,15 +112,15 @@ class Contract(models.Model):
 
     def update_price(self, month: date):
         month = month.replace(day=1)
-        last_price = self.last_price
-        if last_price is None:
+        current_price = self.current_price
+        if current_price is None:
             return
 
         ipc_variance = EconomicIndicator.get_n_months_ipc_multiplier(
             self.number_of_months_for_ipc_update,
             month
         )
-        new_price = last_price.price * ipc_variance
+        new_price = current_price.price * ipc_variance
         reason = _(
             'Actualización por IPC de {}.'
         ).format(

@@ -29,10 +29,10 @@ class ContractForm(forms.ModelForm):
 
         if self.instance.pk:
             self.is_creation = False
-            last_price = self.instance.last_price
-            if last_price:
-                self.fields['price'].initial = int(last_price.price)
-                self.fields['price_date'].initial = last_price.date
+            current_price = self.instance.current_price
+            if current_price:
+                self.fields['price'].initial = int(current_price.price)
+                self.fields['price_date'].initial = current_price.date
         else:
             self.is_creation = True
             self.fields['price_date'].widget = forms.HiddenInput()
