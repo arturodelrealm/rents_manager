@@ -19,7 +19,7 @@ class CommentInline(admin.TabularInline):
 
 class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     list_display = (
-        "apartment",
+        "apartment_address",
         "owner",
         'tenant',
         "current_price",
@@ -91,7 +91,11 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     def owner(self, obj):
         return obj.apartment.owner
 
+    def apartment_address(self, obj):
+        return obj.apartment.address
+
     current_price.short_description = _("Precio actual")
     owner.short_description = _('Propietario')
     tenant.short_description = _('Arrendatario')
     next_price_update_formatted.short_description = _('Próximo ajuste')
+    apartment_address.short_description = _('Departamento')
