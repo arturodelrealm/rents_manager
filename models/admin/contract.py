@@ -38,6 +38,7 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     resource_classes = [UnifiedContractResource]
     skip_admin_log = True
     inlines = [CommentInline]
+    list_select_related = ('apartment', 'apartment__owner')
 
     def save_model(self, request, obj, form, change):
         obj.save()
