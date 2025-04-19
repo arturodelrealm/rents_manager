@@ -1,3 +1,4 @@
+from datetime import date
 from typing import Dict
 
 from django.db import models, transaction
@@ -35,10 +36,14 @@ class HistoricalPrice(models.Model):
     @classmethod
     def create(cls, data: Dict) -> 'HistoricalPrice':
         """Create a price and delete all the prices that are future prices"""
+        if 'contract_id' not in data:
+            data = {**data, 'contract_id': data['contract'].id}
+            data.pop('contract')
         with transaction.atomic():
             cls.objects.filter(
                 contract_id=data['contract_id'],
-                date__gte=data['date']
+                date__gte=data['date'],
+                date__lte=date.today()
             ).delete()
             return cls.objects.create(**data)
 

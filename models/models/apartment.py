@@ -33,4 +33,4 @@ class Apartment(models.Model):
         return self.contracts.filter(end_date__isnull=True)
 
     def __str__(self):
-        return f'{self.address}'
+        return f'{self.address}. Propietario: {self.owner}'
