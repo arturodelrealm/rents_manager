@@ -3,6 +3,7 @@ from decimal import Decimal
 
 from dateutils import relativedelta
 from django.core.exceptions import ValidationError
+from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
@@ -16,6 +17,7 @@ from ..constants import PriceUpdateFrequency
 
 
 class Contract(models.Model):
+    DEFAULT_COMMISSION = Decimal('6.00')
 
     tenants = models.ManyToManyField(
         Person,
@@ -37,6 +39,13 @@ class Contract(models.Model):
         max_length=7,
         choices=PriceUpdateFrequency.choices,
         default=PriceUpdateFrequency.MONTHLY,
+    )
+    commission = models.DecimalField(
+        _('Comisión'),
+        max_digits=4,
+        decimal_places=2,
+        default=DEFAULT_COMMISSION,
+        validators=[MinValueValidator(0), MaxValueValidator(100)]
     )
 
     class Meta:
@@ -146,3 +155,8 @@ class Contract(models.Model):
                 months=self.number_of_months_for_ipc_update
             )
         )
+
+    def get_commission(self) -> Decimal:
+        """Return the commission that the client must pay as multiplier,
+        not as percent"""
+        return self.commission / 100

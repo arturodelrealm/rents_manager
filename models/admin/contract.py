@@ -25,6 +25,15 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
         "current_price",
         'next_price_update_formatted',
     )
+    fields = [
+        'apartment',
+        'tenants',
+        ('start_date', 'end_date', 'next_price_update'),
+        'price_update_frequency',
+        'price',
+        ('price_date', 'reason'),
+        'commission',
+    ]
     form = ContractForm
     resource_classes = [UnifiedContractResource]
     skip_admin_log = True
