@@ -11,7 +11,7 @@ from models.import_export_resources.contract import UnifiedContractResource
 from models.models import Contract, Comment
 
 
-class CommentInline(admin.StackedInline):
+class CommentInline(admin.TabularInline):
     model = Comment
     extra = 1
     readonly_fields = ('created_at',)
