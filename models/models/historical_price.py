@@ -48,4 +48,4 @@ class HistoricalPrice(models.Model):
             return cls.objects.create(**data)
 
     def __str__(self):
-        return f"{self.contract} - {self.date}: {self.price}"
+        return f"{self.contract.apartment.address} - {self.date}: {self.price}"
