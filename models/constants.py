@@ -13,3 +13,8 @@ class PriceUpdateFrequency(models.TextChoices):
 class EconomicIndicatorType(models.TextChoices):
     IPC = 'IPC', _('Índice Precio del Consumidor')
     UF = 'UF', _('Unidad de Fomento')
+
+
+class ChargeTarget(models.TextChoices):
+    OWNER = 'owner', _("Propietario")
+    TENANT = 'tenant', _("Arrendatario")

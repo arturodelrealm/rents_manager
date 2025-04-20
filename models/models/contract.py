@@ -1,5 +1,6 @@
 from datetime import date
 from decimal import Decimal
+from typing import List, Dict
 
 from dateutils import relativedelta
 from django.core.exceptions import ValidationError
@@ -9,11 +10,12 @@ from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
 from result import Ok, Err, Result
 
+from utils import format_int_to_price
 from .apartment import Apartment
 from .person import Person
 from .historical_price import HistoricalPrice
 from .economic_indicator import EconomicIndicator
-from ..constants import PriceUpdateFrequency
+from ..constants import PriceUpdateFrequency, ChargeTarget
 
 
 class Contract(models.Model):
@@ -45,7 +47,8 @@ class Contract(models.Model):
         max_digits=4,
         decimal_places=2,
         default=DEFAULT_COMMISSION,
-        validators=[MinValueValidator(0), MaxValueValidator(100)]
+        validators=[MinValueValidator(0), MaxValueValidator(100)],
+        help_text=_('Porcentaje de comisión sobre el valor del arriendo.')
     )
 
     class Meta:
@@ -87,7 +90,7 @@ class Contract(models.Model):
 
     @staticmethod
     def format_int_price(price: int) -> str:
-        return f'{price:,}$'.replace(',', '.')
+        return format_int_to_price(price)
 
     @property
     def number_of_months_for_ipc_update(self) -> int:
@@ -160,3 +163,70 @@ class Contract(models.Model):
         """Return the commission that the client must pay as multiplier,
         not as percent"""
         return self.commission / 100
+
+    @property
+    def commission_amount(self) -> Decimal:
+        return self.price * self.get_commission()
+
+    def get_owner_other_charges_data(self) -> Dict:
+        charges = self.get_other_charges(ChargeTarget.OWNER)
+        other_charges_discount = sum(
+            charge.amount for charge in charges
+            if not charge.is_credit
+        )
+        other_charges_credit = sum(
+            charge.amount for charge in charges
+            if charge.is_credit
+        )
+        other_charges_net = other_charges_credit - other_charges_discount
+        return {
+            'credit': other_charges_credit,
+            'discount': other_charges_discount,
+            'net': other_charges_net,
+        }
+
+    @property
+    def formatted_commission_amount(self) -> str:
+        return self.format_int_price(int(self.commission_amount))
+
+    @property
+    def net_price(self) -> Decimal:
+        return self.price - self.commission_amount
+
+    @property
+    def owner_net_price(self) -> Decimal:
+        owner_other_charges = self.get_owner_other_charges_data()
+        return self.net_price + owner_other_charges['net']
+
+    @property
+    def formatted_owner_net_price(self) -> str:
+        return self.format_int_price(int(self.owner_net_price))
+
+    def get_other_charges(self, target: ChargeTarget = None) -> List:
+        charges = self.charges.all()
+        if target:
+            charges = charges.filter(target=target)
+        return [charge for charge in charges if charge.is_active()]
+
+    @staticmethod
+    def format_charge(charge) -> str:
+        return charge.display_resume()
+
+    def get_rent_resume(self) -> str:
+        lines = [
+            f"  * Propiedad: {self.apartment.address}",
+            f"  - Arriendo:        {self.formatted_price}"
+        ]
+        lines.extend(
+            map(
+                self.format_charge,
+                self.get_other_charges(ChargeTarget.OWNER)
+            )
+        )
+        lines.append(
+            f"  - Comisión:       -{self.formatted_commission_amount}"
+        )
+        lines.append(f"  - Neto:            {self.formatted_owner_net_price}")
+        lines.append("")
+        return '\n'.join(lines)
+
