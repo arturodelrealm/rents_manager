@@ -11,3 +11,4 @@ pydantic
 requests
 result
 tablib
+whitenoise
