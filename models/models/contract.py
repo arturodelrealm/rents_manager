@@ -229,4 +229,3 @@ class Contract(models.Model):
         lines.append(f"  - Neto:            {self.formatted_owner_net_price}")
         lines.append("")
         return '\n'.join(lines)
-

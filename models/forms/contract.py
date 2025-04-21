@@ -142,7 +142,8 @@ class ImportContractForm(ContractForm):
 
     NOT_REQUIRED_FIELDS = (
         'tenants',
-        'apartment'
+        'apartment',
+        'commission',
     )
 
     def __init__(self, *args, **kwargs):
