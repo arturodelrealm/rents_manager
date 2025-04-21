@@ -10,7 +10,7 @@ from models.forms import ContractForm
 from models.import_export_resources.contract import UnifiedContractResource
 from models.models import Contract
 from .inlines import ChargeInline, CommentInline, HistoricalPriceInline
-from .filters import IsActiveFilter
+from .filters import IsActiveFilter, RecentlyUpdatedFilter
 
 
 class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
@@ -37,7 +37,7 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
         'tenants__name',
         'tenants__last_name',
     ]
-    list_filter = [IsActiveFilter]
+    list_filter = [IsActiveFilter, RecentlyUpdatedFilter]
     form = ContractForm
     resource_classes = [UnifiedContractResource]
     skip_admin_log = True
