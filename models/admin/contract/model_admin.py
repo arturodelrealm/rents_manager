@@ -1,9 +1,6 @@
-from datetime import date
-
 import tablib
 from admin_extra_buttons.api import ExtraButtonsMixin, button
 from django.contrib import admin, messages
-from django.db.models import Q
 from django.http import HttpResponse
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
@@ -11,54 +8,9 @@ from import_export.admin import ImportMixin
 
 from models.forms import ContractForm
 from models.import_export_resources.contract import UnifiedContractResource
-from models.models import Charge, Contract, Comment, HistoricalPrice
-
-
-class IsActiveFilter(admin.SimpleListFilter):
-    title = _('Mostrar inactivos')
-    parameter_name = 'show_inactive'
-
-    def lookups(self, request, model_admin):
-        return [
-            ('yes', _('Sí')),
-        ]
-
-    def queryset(self, request, queryset):
-        if self.value() == 'yes':
-            return queryset
-        return queryset.filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=date.today()),
-            start_date__lte=date.today(),
-        )
-
-
-class ChargeInline(admin.StackedInline):
-    model = Charge
-    extra = 0
-    ordering = ('-start_date',)
-    readonly_fields = ('is_active',)
-    classes = ['collapse']
-
-    def is_active(self, obj: Charge) -> bool:
-        return obj.is_active()
-
-    is_active.boolean = True
-    is_active.short_description = _('¿Está activo?')
-
-
-class CommentInline(admin.TabularInline):
-    model = Comment
-    extra = 1
-    readonly_fields = ('created_at',)
-    classes = ['collapse']
-
-
-class HistoricalPriceInline(admin.TabularInline):
-    model = HistoricalPrice
-    extra = 0
-    ordering = ('-date',)
-    readonly_fields = ('date', 'price', 'reason')
-    classes = ['collapse']
+from models.models import Contract
+from .inlines import ChargeInline, CommentInline, HistoricalPriceInline
+from .filters import IsActiveFilter, RecentlyUpdatedFilter
 
 
 class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
@@ -85,7 +37,7 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
         'tenants__name',
         'tenants__last_name',
     ]
-    list_filter = [IsActiveFilter]
+    list_filter = [IsActiveFilter, RecentlyUpdatedFilter]
     form = ContractForm
     resource_classes = [UnifiedContractResource]
     skip_admin_log = True

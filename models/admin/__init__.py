@@ -1,9 +1,9 @@
 from django.contrib import admin
 
 from .person import PersonAdmin
-from .contract import Contract, ContractAdmin
+from .contract import ContractAdmin
 from .economic_indicator import EconomicIndicator, EconomicIndicatorAdmin
-from models.models import Person, Apartment
+from models.models import Person, Apartment, Contract
 
 admin.site.register(Person, PersonAdmin)
 admin.site.register(Contract, ContractAdmin)

@@ -181,7 +181,7 @@ class EconomicIndicator(models.Model):
         return self.decimal_to_percentage(self.value)
 
     def _display_uf(self) -> str:
-        return f'{self.value:_}$'
+        return f'${self.value:_}'
 
     def __str__(self):
         return f"{self.get_indicator_type_display()} - {self.date}: " \
