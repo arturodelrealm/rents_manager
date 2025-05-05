@@ -138,6 +138,9 @@ class UnifiedContractResource(Resource):
                 result.append_error_row(i, row, row_result.errors)
             result.append_row_result(row_result)
             result.increment_row_result_total(row_result)
+        # if result has errors, return it
+        if result.has_errors():
+            return result
         if not dry_run:
             for row_data in self.cached_rows:
                 self.save_row(row_data)

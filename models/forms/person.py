@@ -11,4 +11,10 @@ class PersonForm(forms.ModelForm):
 
     class Meta:
         model = Person
-        fields = '__all__'
+        fields = (
+            'name',
+            'last_name',
+            'email',
+            'phone',
+            'rut',
+        )
