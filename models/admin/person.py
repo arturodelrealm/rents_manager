@@ -50,6 +50,7 @@ class PersonAdmin(admin.ModelAdmin):
                     'name',
                     'last_name',
                     'email',
+                    'phone',
                     'rut',
                 ],
             },
