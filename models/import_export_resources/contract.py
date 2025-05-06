@@ -4,6 +4,7 @@ from typing import Tuple
 from import_export.resources import Resource
 
 from django.utils.translation import gettext_lazy as _
+from django.utils.translation import gettext
 from import_export.results import RowResult, Error
 from result import Result, Ok, Err
 
@@ -26,6 +27,7 @@ class UnifiedContractResource(Resource):
         _('Departamento'),
         _('Arrendatario'),
         _('Precio'),
+        _('Alertas'),
     )
 
     FILE_HEADERS = (
@@ -53,8 +55,12 @@ class UnifiedContractResource(Resource):
     def __init__(self, **kwargs):
 
         super().__init__(**kwargs)
+        persons = Person.objects.all()
         self.persons_by_email = {
-            person.email: person for person in Person.objects.all()
+            person.email: person for person in persons
+        }
+        self.emails_by_rut = {
+            person.rut: person.email for person in persons if person.rut
         }
         self.apartments_by_address = {
             apartment.cleaned_address: apartment
@@ -65,11 +71,21 @@ class UnifiedContractResource(Resource):
     def _validate_person(self, data: dict) -> Result:
         if data['email'] in self.persons_by_email:
             return Ok(self.persons_by_email[data['email']])
+        if data['rut'] and data['rut'] in self.emails_by_rut:
+            if data['email'] != self.emails_by_rut[data['rut']]:
+                return Err(
+                    [_(
+                        'Ya existe un email ({}) asociado al rut {}.'
+                    ).format(self.emails_by_rut[data['rut']], data['rut'])
+                    ]
+                )
         form = PersonForm(data)
         if form.is_valid():
             # IMPORTANT: don't save the instance until all validations are done
             person = form.save(commit=False)
             self.persons_by_email[person.email] = person
+            if person.rut:
+                self.emails_by_rut[person.rut] = person.email
             return Ok(person)
         return Err(errors_to_messages(form))
 
@@ -122,7 +138,7 @@ class UnifiedContractResource(Resource):
             return result
         result.total_rows = len(dataset)
 
-        for i, row in enumerate(dataset.dict, 1):
+        for i, row in enumerate(dataset.dict, 2):
             kwargs.update(
                 {
                     "dry_run": dry_run,
@@ -148,6 +164,7 @@ class UnifiedContractResource(Resource):
 
     def validate_row(self, row) -> Result:
         errors = []
+        warnings = []
         owner = None
         apartment = None
         tenants = []
@@ -181,7 +198,8 @@ class UnifiedContractResource(Resource):
                         "name": name,
                         "last_name": row[f"Arrendatario{suffix} apellido"],
                         "email": row[f"Arrendatario{suffix} email".strip()],
-                        "phone": row[f"Arrendatario{suffix} teléfono".strip()]
+                        "phone": row[f"Arrendatario{suffix} teléfono".strip()],
+                        "rut": None,
                     }
                 )
                 if result.is_err():
@@ -194,7 +212,20 @@ class UnifiedContractResource(Resource):
                 else:
                     tenants.append(result.ok())
         if not tenants:
-            errors.append(_('No se proporcionaron arrendatarios.'))
+            # Use gettext instead of lazy to avoid errors using str.join.
+            warnings.append(
+                gettext('No se proporcionaron arrendatarios. Solo se guardará'
+                        ' la propiedad.')
+            )
+            return Ok(
+                {
+                    'owner': owner,
+                    'tenants': tenants,
+                    'apartment': apartment,
+                    'contract_form': None,
+                    'warnings': warnings,
+                }
+            )
         if owner and owner.email in map(attrgetter('email'), tenants):
             errors.append(
                 _('El propietario no puede ser también arrendatario.')
@@ -228,7 +259,8 @@ class UnifiedContractResource(Resource):
                 'owner': owner,
                 'tenants': tenants,
                 'apartment': apartment,
-                'contract_form': contract_form
+                'contract_form': contract_form,
+                'warnings': warnings,
             }
         )
 
@@ -236,6 +268,10 @@ class UnifiedContractResource(Resource):
     def must_skip(data: dict) -> bool:
         apartment = data['apartment']
         return apartment.pk and apartment.active_contracts.exists()
+
+    @staticmethod
+    def must_save_contract(data: dict) -> bool:
+        return data['contract_form'] is not None
 
     def import_row(self, row, **kwargs):
         row_result = RowResult()
@@ -254,14 +290,22 @@ class UnifiedContractResource(Resource):
             else:
                 row_result.import_type = RowResult.IMPORT_TYPE_NEW
             self.cached_rows.append((row_result, data))
+
             # Data to be shown on confirmation
+            if self.must_save_contract(data):
+                tenant = data['tenants'][0]
+                contract_price = Contract.format_int_price(
+                    data['contract_form'].cleaned_data['price']
+                )
+            else:
+                tenant = '-'
+                contract_price = '-'
             row_result.diff = (
                 data['owner'],
                 data['apartment'],
-                data['tenants'][0],
-                Contract.format_int_price(
-                    data['contract_form'].cleaned_data['price']
-                )
+                tenant,
+                contract_price,
+                ', '.join(data['warnings']),
             )
         return row_result
 
@@ -284,6 +328,8 @@ class UnifiedContractResource(Resource):
         for tenant in tenants:
             if not tenant.pk:
                 tenant.save()
+        if contract_form is None:
+            return
         contract = contract_form.save(commit=False)
         contract.apartment = apartment
         contract.save()
