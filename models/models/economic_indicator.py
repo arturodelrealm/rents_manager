@@ -4,7 +4,9 @@ from typing import Generator, Optional, Iterable, Tuple, List
 
 from dateutils import relativedelta
 from django.db import models
+from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
+from result import Result, Ok, Err
 
 from ..constants import EconomicIndicatorType
 from services.economic_indicators import IPCService
@@ -108,6 +110,32 @@ class EconomicIndicator(models.Model):
             date__gt=month - relativedelta(months=check_last_n_months),
             date__day=1
         ).count() == check_last_n_months
+
+    @classmethod
+    def get_latest_month_with_ipc(
+            cls,
+            check_last_n_months=None
+    ) -> Result:
+        """Get the last month with an IPC value. Also validate if all the
+        needed IPC values are present for this latest month IPC."""
+        last_ipc_value = cls.objects.filter(
+            indicator_type=EconomicIndicatorType.IPC,
+            date__day=1
+        ).order_by('-date').first()
+        if last_ipc_value is None:
+            return Err(_('No hay datos disponibles del IPC'))
+        if cls.check_month_ipc_exists(
+                last_ipc_value.date, check_last_n_months=check_last_n_months):
+            return Ok(last_ipc_value.date)
+        return Err(
+            _(
+                'Los datos del IPC están incompletos. El último mes con datos '
+                'es {}, pero no se tienen suficientes datos de los meses '
+                'anteriores. Puede ir a Indicadores Económicos a obtener '
+                'los datos.'
+            ).format(date_format(
+                last_ipc_value.date, 'YEAR_MONTH_FORMAT', use_l10n=True))
+        )
 
     @classmethod
     def get_accumulative_n_months_ipc(
