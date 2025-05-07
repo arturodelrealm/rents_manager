@@ -6,9 +6,9 @@ from dateutils import relativedelta
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
-from django.utils.formats import date_format
+from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
-from result import Ok, Err, Result
+from result import Ok, Result
 
 from utils import format_int_to_price
 from .apartment import Apartment
@@ -101,26 +101,43 @@ class Contract(models.Model):
         # TODO: validation of the IPC existance for the 8th day
         return update_date >= self.next_price_update
 
+    @staticmethod
+    def filter_active_contracts(queryset):
+        """Return a filtered queryset with only the active contracts."""
+        return queryset.filter(
+            Q(end_date__isnull=True) | Q(end_date__gte=date.today()),
+            start_date__lte=date.today(),
+        )
+
     @classmethod
-    def update_prices_by_ipc(cls, month: date = None) -> Result:
-        month = month or date.today()
+    def get_active_contracts(cls, with_prices=True):
+        """Return all contracts that are active."""
+        active_contracts = cls.filter_active_contracts(cls.objects)
+        if with_prices:
+            active_contracts = active_contracts.filter(
+                historical_prices__isnull=False).distinct()
+        return active_contracts
+
+    @classmethod
+    def update_prices_by_ipc(cls) -> Result:
         updated_contracts = set()
-        if not EconomicIndicator.check_month_ipc_exists(month, True, 12):
-            return Err(
-                _('No existe el valor del IPC para actualizar los precios del '
-                  'mes de {}. Puede ir a indicadores Económicos a obtener los '
-                  'datos').format(
-                    date_format(month, 'YEAR_MONTH_FORMAT', use_l10n=True)
-                )
-            )
-        for contract in cls.objects.all():
+        last_month_with_ipc = EconomicIndicator.get_latest_month_with_ipc(12)
+        if last_month_with_ipc.is_err():
+            return last_month_with_ipc
+        last_month_with_ipc = last_month_with_ipc.ok()
+        # The last updatable month is the next of the last IPC value.
+        month = last_month_with_ipc + relativedelta(months=1)
+        for contract in cls.get_active_contracts(True):
             # Update the contract while it must be updated. (Case when more
             # than one update time has passed since the last price update).
             while contract.must_update_price_by_ipc(month):
                 contract.update_price(contract.next_price_update)
                 updated_contracts.add(contract.id)
-
-        return Ok(len(updated_contracts))
+        return_data = {
+            'total_contracts_updated': len(updated_contracts),
+            'month_updated': month
+        }
+        return Ok(return_data)
 
     def update_price(self, month: date):
         month = month.replace(day=1)

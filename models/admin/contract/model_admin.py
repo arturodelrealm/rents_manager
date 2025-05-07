@@ -63,15 +63,30 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
         ] = 'attachment; filename="plantilla_importacion.xlsx"'
         return response
 
-    @button(label=_('Calcular precios del mes'))
+    @button(label=_('Actualizar precios según IPC'))
     def update_ipc(self, request):
         result = Contract.update_prices_by_ipc()
         if result.is_ok():
-            total_contracts_updated = result.ok()
+            update_data = result.ok()
+
+            total_contracts_updated = update_data['total_contracts_updated']
+            month_updated = update_data['month_updated']
             messages.success(
                 request,
                 _('Precios de {} contratos actualizados').format(
                     total_contracts_updated
+                )
+            )
+            messages.info(
+                request,
+                _(
+                    'Los precios fueron actualizados para el último'
+                    ' mes con datos del IPC ({}).'
+                ).format(
+                    date_format(
+                        month_updated,
+                        'YEAR_MONTH_FORMAT',
+                        use_l10n=True)
                 )
             )
         else:

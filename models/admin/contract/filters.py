@@ -1,10 +1,11 @@
 from datetime import date, datetime
 
 from django.contrib import admin
-from django.db.models import Q
 from django.utils.translation import gettext_lazy as _
 from django.utils.formats import date_format
 from dateutils import relativedelta
+
+from models.models import Contract
 
 
 class IsActiveFilter(admin.SimpleListFilter):
@@ -19,10 +20,7 @@ class IsActiveFilter(admin.SimpleListFilter):
     def queryset(self, request, queryset):
         if self.value() == 'yes':
             return queryset
-        return queryset.filter(
-            Q(end_date__isnull=True) | Q(end_date__gte=date.today()),
-            start_date__lte=date.today(),
-        )
+        return Contract.filter_active_contracts(queryset)
 
 
 class RecentlyUpdatedFilter(admin.SimpleListFilter):
