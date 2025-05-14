@@ -10,5 +10,6 @@ gunicorn
 pydantic
 requests
 result
+rollbar
 tablib
 whitenoise

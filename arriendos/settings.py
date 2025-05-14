@@ -11,7 +11,10 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 import os
+import socket
 from pathlib import Path
+
+import rollbar
 
 from import_export.formats.base_formats import CSV
 
@@ -31,6 +34,8 @@ DEBUG = os.getenv('DEBUG') == 'True'
 ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "localhost").split(",")
 
 CSRF_TRUSTED_ORIGINS = os.getenv("CSRF_TRUSTED_ORIGINS", "").split(",")
+
+USE_ROLLBAR = not DEBUG
 
 # Application definition
 
@@ -171,3 +176,17 @@ PHONENUMBER_DEFAULT_REGION = 'CL'
 
 IMPORT_FORMATS = [CSV]
 
+if USE_ROLLBAR:
+    MIDDLEWARE += [
+        'rollbar.contrib.django.middleware.RollbarNotifierMiddleware',
+    ]
+    ROLLBAR = {
+        'access_token': os.getenv('ROLLBAR_TOKEN'),
+        'environment': 'development' if DEBUG else 'production',
+        'root': BASE_DIR,
+        'branch': 'main',
+        'code_version': '1.0',
+        'server_host': socket.gethostname(),
+    }
+
+    rollbar.init(**ROLLBAR)
