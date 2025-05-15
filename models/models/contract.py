@@ -7,6 +7,7 @@ from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.db import models, transaction
 from django.db.models import Q
+from django.utils.functional import cached_property
 from django.utils.translation import gettext_lazy as _
 from result import Ok, Result
 
@@ -71,8 +72,12 @@ class Contract(models.Model):
             self.formatted_price
         )
 
-    @property
-    def current_price(self) -> HistoricalPrice:
+    @cached_property
+    def current_price(self) -> HistoricalPrice | None:
+        if hasattr(self, 'prefetched_prices'):
+            if self.prefetched_prices:
+                return self.prefetched_prices[0]
+            return None
         return self.historical_prices.filter(
             date__lte=date.today()
         ).order_by('-date').first()
