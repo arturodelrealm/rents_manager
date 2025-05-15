@@ -1,10 +1,10 @@
 from typing import Any
 
 from django import forms
-from django.db.models import Q
+from django.db.models import Q, Case, When, Value, BooleanField
 from django.utils.translation import gettext_lazy as _
 
-from models.models import Contract, HistoricalPrice
+from models.models import Contract, HistoricalPrice, Person
 
 
 class ContractForm(forms.ModelForm):
@@ -26,10 +26,12 @@ class ContractForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
+        selected_tenants = []
         if self.instance.pk:
             self.is_creation = False
             current_price = self.instance.current_price
+            selected_tenants = self.instance.tenants.values('id')
+
             if current_price:
                 self.fields['price'].initial = int(current_price.price)
                 self.fields['price_date'].initial = current_price.date
@@ -37,6 +39,17 @@ class ContractForm(forms.ModelForm):
             self.is_creation = True
             self.fields['price_date'].widget = forms.HiddenInput()
             self.fields['reason'].widget = forms.HiddenInput()
+
+        self.fields['tenants'].queryset = Person.objects.annotate(
+            is_selected=Case(
+                When(
+                    id__in=selected_tenants,
+                    then=Value(True)
+                ),
+                default=Value(False),
+                output_field=BooleanField()
+            )
+        ).order_by('-is_selected', 'name', 'last_name')
 
     def validate_owner_is_not_tenant(self):
         if self.errors:
