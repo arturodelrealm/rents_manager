@@ -1,14 +1,17 @@
+from datetime import date
+
 import tablib
 from admin_extra_buttons.api import ExtraButtonsMixin, button
 from django.contrib import admin, messages
-from django.http import HttpResponse
+from django.db.models import Prefetch
+from django.http import HttpResponse, HttpRequest
 from django.utils.formats import date_format
 from django.utils.translation import gettext_lazy as _
 from import_export.admin import ImportMixin
 
 from models.forms import ContractForm
 from models.import_export_resources.contract import UnifiedContractResource
-from models.models import Contract
+from models.models import Contract, HistoricalPrice
 from .inlines import ChargeInline, CommentInline, HistoricalPriceInline
 from .filters import IsActiveFilter, RecentlyUpdatedFilter
 
@@ -43,6 +46,26 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
     skip_admin_log = True
     inlines = [ChargeInline, CommentInline, HistoricalPriceInline]
     list_select_related = ('apartment', 'apartment__owner')
+
+    def get_queryset(self, request):
+        qs = super().get_queryset(request)
+        historical_qs = HistoricalPrice.objects.filter(
+            date__lte=date.today()
+        ).order_by('-date')
+        return qs.prefetch_related(
+            Prefetch(
+                'historical_prices',
+                queryset=historical_qs,
+                to_attr='prefetched_prices'
+            ),
+            'tenants'
+        )
+
+    def get_fields(self, request: HttpRequest, obj: None = ...):
+        if not obj:
+            return self.fields
+        # Remove apartments selector if the contract is already created
+        return [field for field in self.fields if field != 'apartment']
 
     def save_model(self, request, obj, form, change):
         obj.save()
@@ -106,7 +129,7 @@ class ContractAdmin(ImportMixin, ExtraButtonsMixin, admin.ModelAdmin):
         )
 
     def tenant(self, obj):
-        tenants = list(obj.tenants.all().iterator())
+        tenants = list(obj.tenants.all())
 
         first_tenant = tenants[0] if tenants else None
         if len(tenants) > 1:
